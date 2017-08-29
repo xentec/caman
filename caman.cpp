@@ -24,7 +24,7 @@
 
 using namespace Botan;
 
-#define DOMAIN_BASE "aix0.eu"
+#define DOMAIN_BASE "example.net"
 
 #define CA_FILENAME DOMAIN_BASE ".ca"
 #define CA_DURATION 86400*365*10
@@ -103,25 +103,24 @@ int main(int argc, char *argv[])
 		X509_Cert_Options opt(DOMAIN_BASE " ImCA/DE/" DOMAIN_BASE, IM_DURATION);
 		opt.CA_key(0);
 
-		auto req = X509::create_cert_req(opt, *imKey, DEFAULT_HASH, rng);
-		auto crt = ca->sign_request(req, rng, opt.start, opt.end);
+		auto crt = ca->sign_request(X509::create_cert_req(opt, *imKey, DEFAULT_HASH, rng), rng, opt.start, opt.end);
 		std::cerr << crt.to_string();
 		std::ofstream(IM_FILENAME FILE_EXT_CERT) << crt.PEM_encode();
+		std::ofstream(DOMAIN_BASE ".chain" FILE_EXT_CERT) << crt.PEM_encode() << ca->ca_certificate().PEM_encode();
 
 		caKey.swap(imKey);
 		ca = std::make_unique<X509_CA>(crt, *caKey, DEFAULT_HASH, rng);
 	} else
 	{
-		caKey.reset(PKCS8::load_key(IM_FILENAME FILE_EXT_KEY, rng, []() { return read_pw("to open intermediate CA key"); }));
+		caKey.reset(PKCS8::load_key(IM_FILENAME FILE_EXT_KEY, rng, []() { return read_pw("to open CA key"); }));
 		ca = std::make_unique<X509_CA>(X509_Certificate(IM_FILENAME FILE_EXT_CERT), *caKey, DEFAULT_HASH, rng);
 	}
 
+	// END POINT
+	/////////////
 	for(int i = 1; i < argc; ++i)
 	{
-		std::istringstream arg(argv[i]);
-		std::string cn, usage;
-		std::getline(arg, cn, ':');
-		std::getline(arg, usage, ':');
+		std::string cn = argv[i];
 
 		auto fqdn = cn + "." DOMAIN_BASE;
 		auto keyName = fqdn + FILE_EXT_KEY, certName = fqdn + FILE_EXT_CERT;
@@ -129,7 +128,6 @@ int main(int argc, char *argv[])
 		if(fs::exists(certName)) continue;
 
 		auto key = summon_key(keyName, rng);
-		std::ofstream(keyName) << PKCS8::PEM_encode(*key);
 
 		std::cerr << "Creating cert for " << fqdn << "..." << std::endl;
 		X509_Cert_Options opt(fqdn + "/DE/" DOMAIN_BASE, DEFAULT_DURATION);
@@ -138,8 +136,7 @@ int main(int argc, char *argv[])
 		opt.add_ex_constraint("PKIX.ClientAuth");
 		opt.add_ex_constraint("PKIX.ServerAuth");
 
-		auto req = X509::create_cert_req(opt, *key, DEFAULT_HASH, rng);;
-		auto crt = ca->sign_request(req, rng, opt.start, opt.end);
+		auto crt = ca->sign_request(X509::create_cert_req(opt, *key, DEFAULT_HASH, rng), rng, opt.start, opt.end);
 
 		std::cerr << crt.to_string();
 		std::ofstream(certName) << crt.PEM_encode();
