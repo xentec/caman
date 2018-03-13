@@ -88,6 +88,12 @@ auto summon_key(const fs::path& filename, RandomNumberGenerator& rng, bool encry
 	return key;
 }
 
+void usage(const char *name, int code = EXIT_SUCCESS)
+{
+	std::cout << "usage: " << (name ?: "caman") << " <ca_domain> [subdomain...]" << std::endl;
+	std::exit(EXIT_SUCCESS);
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -97,10 +103,8 @@ int main(int argc, char *argv[])
 	std::unique_ptr<Private_Key> ca_key;
 	std::unique_ptr<X509_CA> ca;
 
-	if(argc < 2) {
-		std::cout << "usage: " << (*argv ?: "caman") << " <ca_domain> [subdomain...]" << std::endl;
-		return 1;
-	}
+	if(argc < 2 || !*argv[1])
+		usage(*argv, 1);
 
 	const path domain_base = argv[1];
 	if(!fs::exists(domain_base)) fs::create_directories(domain_base);
@@ -149,39 +153,60 @@ int main(int argc, char *argv[])
 		ca = std::make_unique<X509_CA>(crt, *ca_key, DEFAULT_HASH, rng);
 	} else
 	{
+		if(argc < 3) usage(*argv);
+
 		ca_key.reset(PKCS8::load_key(im_path / NAME_KEY, rng, []() { return read_pw("to open INTERMEDIATE CA key"); }));
 		ca = std::make_unique<X509_CA>(X509_Certificate(im_cert_path), *ca_key, DEFAULT_HASH, rng);
 	}
 
-	const path issued = domain_base / "issued";
-	fs::create_directories(issued);
-
-
 	// END POINT
 	/////////////
+	const path issued = domain_base / "issued";
+	fs::create_directories(issued);
 	for(int i = 2; i < argc; ++i)
 	{
 		const std::string sub = std::string(argv[i]);
-		const std::string fqdn = sub + "." + domain_base.string();
-		auto cert_path = issued / sub / NAME_CERT;
+		std::string fqdn;
 
-		if(fs::exists(cert_path)) continue;
+		if(sub.empty())
+			fqdn = domain_base.string();
+		else if(sub.find(".") != std::string::npos)
+			fqdn = sub;
+		else
+			fqdn = sub + "." + domain_base.string();
 
-		fs::create_directories(cert_path.parent_path());
-		auto key = summon_key(issued / sub / NAME_KEY, rng);
+		const path sub_path = issued / fqdn;
+		const path cert_path = sub_path / NAME_CERT;
+
+		if(fs::exists(cert_path))
+		{
+			std::cerr << fqdn << " already exists!\n";
+			continue;
+		}
+
+		fs::create_directories(sub_path);
+
+		const path key_path = sub_path / NAME_KEY;
+		auto key = summon_key(key_path, rng);
 
 		std::cerr << "Creating cert for " << fqdn << "..." << std::endl;
 		X509_Cert_Options opt(fqdn +"/"+ CA_COUNTRY +"/"+ domain_base.string(), DEFAULT_DURATION);
-		opt.dns = fqdn;
 		opt.constraints = Key_Constraints(DIGITAL_SIGNATURE);
 		opt.add_ex_constraint("PKIX.ServerAuth");
+		opt.dns = fqdn;
 
 		const auto crt = ca->sign_request(X509::create_cert_req(opt, *key, DEFAULT_HASH, rng), rng, opt.start, opt.end);
 		const auto crt_data = crt.PEM_encode();
+		const path chain_path = sub_path / NAME_CHAIN;
 
 		std::cerr << crt.to_string();
 		std::ofstream(cert_path) << crt_data;
-		std::ofstream(cert_path.parent_path() / NAME_CHAIN) << crt_data << std::ifstream(im_chain_path).rdbuf();
+		std::ofstream(chain_path) << crt_data << std::ifstream(im_chain_path).rdbuf();
+
+		std::cerr
+			<< "Private key: " << key_path.string() << "\n"
+			<< "Certificate: " << cert_path.string() << "\n"
+			<< "Chain:       " << chain_path.string() << std::endl;
 	}
 
 	return 0;
