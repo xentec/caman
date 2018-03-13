@@ -1,7 +1,7 @@
 // Compile with
-//   c++ caman.cpp -o caman -std=c++17 -I/usr/include/botan-2/ -lbotan-2 -lstdc++fs
+//   c++ caman.cpp -o caman -std=c++17 -O3 -I/usr/include/botan-2/ -lbotan-2 -lstdc++fs
 // or for maximum static
-//   c++ src/main.cpp -o caman -std=c++17 -I/usr/include/botan-2/ -flto -O3 -Wl,-O3,--strip-all -pthread -stdlib=libc++ -static -L/usr/local/lib/ -lbotan-2 -lc++experimental -lc++ -lc++abi
+//   clang++ caman.cpp -o caman -std=c++17 -O3 -flto -I/usr/include/botan-2/ -Wl,-O3,--strip-all -pthread -stdlib=libc++ -static -L/usr/local/lib/ -lbotan-2 -lc++experimental -lc++ -lc++abi
 
 #include <botan/data_src.h>
 #include <botan/pk_algs.h>
@@ -97,7 +97,7 @@ auto summon_key(const fs::path& filename, RandomNumberGenerator& rng, bool encry
 void usage(const char *name, int code = EXIT_SUCCESS)
 {
 	std::cout << "usage: " << (name ?: "caman") << " <ca_domain> [subdomain...]" << std::endl;
-	std::exit(EXIT_SUCCESS);
+	std::exit(code);
 }
 
 
