@@ -9,6 +9,7 @@
 #include <botan/system_rng.h>
 #include <botan/x509self.h>
 #include <botan/x509_ca.h>
+#include <botan/version.h>
 
 #include <iostream>
 #include <fstream>
@@ -27,6 +28,11 @@
 #	error "std::filesystem required"
 #endif
 
+# if BOTAN_VERSION_CODE < BOTAN_VERSION_CODE_FOR(2,5,0)
+#    warning "Botan older than 2.5.0 creates compressed ECDSA keys, which might be a compatibility issue"
+# endif
+
+
 using namespace Botan;
 
 constexpr auto CA_COUNTRY = "DE";
@@ -37,7 +43,7 @@ constexpr auto CA_IM_NAME = "CA INTERMEDIATE X18";
 constexpr auto CA_IM_DURATION = 86400*365*5;
 
 constexpr auto NAME_KEY = "key.pem";
-constexpr auto NAME_CSR = "csr.pem";
+//constexpr auto NAME_CSR = "csr.pem";
 constexpr auto NAME_CERT = "crt.pem";
 constexpr auto NAME_CHAIN = "chain.pem";
 
