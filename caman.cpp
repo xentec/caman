@@ -1,11 +1,11 @@
 // Compile with
-//  c++ caman.cpp -o caman -std=c++17 -O3 -I/usr/include/botan-2/ -lbotan-2 -lstdc++fs
+//   c++ caman.cpp -o caman -std=c++17 -O3 -I/usr/include/botan-2/ -lbotan-2 -lstdc++fs
 
 /* Use like
- *  caman example.org          # generate 'example.org' cert authority
- *  caman example.org www mail # generate certs for {www,mail}.example.org
+ *	caman example.org          # generate 'example.org' cert authority
+ *	caman example.org www mail # generate certs for {www,mail}.example.org
  *  caman example.org legacy/a:RSA:2048 # a RSA cert legacy.example.org
- *  caman example.org uk.example.net/c:UK # certs for foreign TLD
+ *	caman example.org uk.example.net/c:UK # certs for foreign TLD
  *  caman example.org highend/a:Ed25519/h:SHA-3(512)/d:2y
 */
 
@@ -75,7 +75,7 @@ inline std::basic_ostream<_CharT, _Traits>& nl(std::basic_ostream<_CharT, _Trait
 }
 
 
-auto read_pw(const std::string &desc = "") -> std::string
+auto read_pw(const std::string_view &desc = "") -> std::string
 {
 	std::cerr << "Enter password";
 	if(!desc.empty()) std::cerr << " " << desc;
@@ -112,26 +112,24 @@ auto key_summon(const fs::path& filename, RandomNumberGenerator& rng, bool encry
 				const std::string& param = "") -> std::unique_ptr<Private_Key>
 {
 
-	std::unique_ptr<Private_Key> key;
 	if(fs::exists(filename))
-		key = key_load(filename);
+		return key_load(filename);
+
+	std::cerr << "Generating key " << filename << "..." << std::endl;
+	auto key = create_private_key(algo, rng, param, "base");
+	if(!key)
+		std::cerr << "Failed to create " << filename << " with " << algo << nl
+				  << "Wrong algorithm?" << std::endl;
 	else
 	{
-		std::cerr << "Generating key " << filename << "..." << std::endl;
-		key = create_private_key(algo, rng, param, "base");
-		if(!key)
-			std::cerr << "Failed to create " << filename << " with " << algo << nl
-					  << "Wrong algorithm?" << std::endl;
-		else
-		{
-			std::string pemKey = encrypt ?
-				PKCS8::PEM_encode(*key, rng, read_pw("to create key")) :
-				PKCS8::PEM_encode(*key);
+		std::string pemKey = encrypt ?
+			PKCS8::PEM_encode(*key, rng, read_pw("to create key")) :
+			PKCS8::PEM_encode(*key);
 
-			std::ofstream(filename) << pemKey << std::endl;
-			fs::permissions(filename, fs::perms::owner_read);
-		}
+		std::ofstream(filename) << pemKey << std::endl;
+		fs::permissions(filename, fs::perms::owner_read);
 	}
+
 	return key;
 }
 
@@ -158,12 +156,10 @@ bool parse_duration(const std::string_view& param, u_int32_t& dur)
 
 void parse_opts(std::string_view spec, std::string_view& subdomain, Opts& opts)
 {
-	bool end = false;
-	size_t b = 0, e;
-	while(!end)
+	size_t b = 0, e = 0;
+	while(e != std::string_view::npos)
 	{
 		e = spec.find('/', b);
-		end = e == std::string_view::npos;
 		const auto arg = spec.substr(b, e-b);
 		b = e+1;
 
@@ -214,7 +210,7 @@ void usage(const char *name, int code = EXIT_SUCCESS)
 {
 	std::cerr << "usage: " << (name ?: "caman") << " <ca_domain> [ca_subdomain|domain ...]" << nl
 			  << "where  ca_domain := <rfc-domain>" << nl
-			  << "       ca_subdomain := <rfc-label>[/opt[/...]]" << nl
+			  << "       ca_subdomain := <rfc-label>[;opt[/...]]" << nl
 			  << "       domain := <rfc-domain>[/opt[/...]]" << nl
 			  << "       opt := a[lgo]:<Botan-algo>[:<Botan-algo-parameter>]" << nl
 			  << "            | h[hash]:<Botan-hash>" << nl
@@ -341,7 +337,7 @@ int main(int argc, char *argv[])
 		{
 			{ "RSA"s,  Key_Constraints(DIGITAL_SIGNATURE | KEY_ENCIPHERMENT) },
 			{ "ECDSA"s,  Key_Constraints(DIGITAL_SIGNATURE) },
-			{ "Curve25519"s,  Key_Constraints(KEY_AGREEMENT) },
+			{ "Curve25519"s,  Key_Constraints() },
 		};
 
 		if(const auto kci = algo_constr_map.find(opts.algo); kci != algo_constr_map.end())
