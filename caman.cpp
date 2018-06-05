@@ -1,11 +1,11 @@
 // Compile with
-//   c++ caman.cpp -o caman -std=c++17 -O3 -I/usr/include/botan-2/ -lbotan-2 -lstdc++fs
+//  c++ caman.cpp -o caman -std=c++17 -O3 -I/usr/include/botan-2/ -lbotan-2 -lstdc++fs
 
 /* Use like
- *	caman example.org          # generate 'example.org' cert authority
- *	caman example.org www mail # generate certs for {www,mail}.example.org
+ *  caman example.org          # generate 'example.org' cert authority
+ *  caman example.org www mail # generate certs for {www,mail}.example.org
  *  caman example.org legacy/a:RSA:2048 # a RSA cert legacy.example.org
- *	caman example.org uk.example.net/c:UK # certs for foreign TLD
+ *  caman example.org uk.example.net/c:UK # certs for foreign TLD
  *  caman example.org highend/a:Ed25519/h:SHA-3(512)/d:2y
 */
 
@@ -337,7 +337,6 @@ int main(int argc, char *argv[])
 		{
 			{ "RSA"s,  Key_Constraints(DIGITAL_SIGNATURE | KEY_ENCIPHERMENT) },
 			{ "ECDSA"s,  Key_Constraints(DIGITAL_SIGNATURE) },
-			{ "Curve25519"s,  Key_Constraints() },
 		};
 
 		if(const auto kci = algo_constr_map.find(opts.algo); kci != algo_constr_map.end())
