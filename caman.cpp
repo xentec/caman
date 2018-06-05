@@ -214,7 +214,7 @@ void usage(const char *name, int code = EXIT_SUCCESS)
 {
 	std::cerr << "usage: " << (name ?: "caman") << " <ca_domain> [ca_subdomain|domain ...]" << nl
 			  << "where  ca_domain := <rfc-domain>" << nl
-			  << "       ca_subdomain := <rfc-label>[;opt[/...]]" << nl
+			  << "       ca_subdomain := <rfc-label>[/opt[/...]]" << nl
 			  << "       domain := <rfc-domain>[/opt[/...]]" << nl
 			  << "       opt := a[lgo]:<Botan-algo>[:<Botan-algo-parameter>]" << nl
 			  << "            | h[hash]:<Botan-hash>" << nl
